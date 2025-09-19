@@ -1,7 +1,7 @@
 use crate::models::{Folder, Milestone, Priority, Roadmap, Status};
 use crate::storage::Storage;
 use crate::ui;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind, MouseButton};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap},
@@ -46,6 +46,13 @@ pub struct App {
     pub last_frame_time: Instant,
     pub show_celebration: bool,
     pub celebration_start: Option<Instant>,
+    // Mouse support
+    pub milestone_list_area: Rect,
+    pub folder_list_area: Rect,
+    pub help_button_area: Rect,
+    pub add_button_area: Rect,
+    pub folder_button_area: Rect,
+    pub mouse_hover_item: Option<usize>,
 }
 
 impl App {
@@ -80,6 +87,13 @@ impl App {
             last_frame_time: Instant::now(),
             show_celebration: false,
             celebration_start: None,
+            // Initialize mouse areas with default empty rects
+            milestone_list_area: Rect::default(),
+            folder_list_area: Rect::default(),
+            help_button_area: Rect::default(),
+            add_button_area: Rect::default(),
+            folder_button_area: Rect::default(),
+            mouse_hover_item: None,
         })
     }
 
@@ -92,17 +106,104 @@ impl App {
     }
 
     pub fn handle_events(&mut self) -> Result<(), Box<dyn Error>> {
-        if let Event::Key(key) = event::read()? {
-            match self.mode {
-                AppMode::Normal => self.handle_normal_mode(key)?,
-                AppMode::Help => self.handle_help_mode(key),
-                AppMode::AddMilestone => self.handle_add_milestone_mode(key)?,
-                AppMode::EditMilestone(id) => self.handle_edit_milestone_mode(key, id)?,
-                AppMode::ConfirmDelete(id) => self.handle_confirm_delete_mode(key, id)?,
-                AppMode::AddFolder => self.handle_add_folder_mode(key)?,
-                AppMode::EditFolder(id) => self.handle_edit_folder_mode(key, id)?,
-                AppMode::SelectFolder(milestone_id) => self.handle_select_folder_mode(key, milestone_id)?,
+        let event = event::read()?;
+        match event {
+            Event::Key(key) => {
+                match self.mode {
+                    AppMode::Normal => self.handle_normal_mode(key)?,
+                    AppMode::Help => self.handle_help_mode(key),
+                    AppMode::AddMilestone => self.handle_add_milestone_mode(key)?,
+                    AppMode::EditMilestone(id) => self.handle_edit_milestone_mode(key, id)?,
+                    AppMode::ConfirmDelete(id) => self.handle_confirm_delete_mode(key, id)?,
+                    AppMode::AddFolder => self.handle_add_folder_mode(key)?,
+                    AppMode::EditFolder(id) => self.handle_edit_folder_mode(key, id)?,
+                    AppMode::SelectFolder(milestone_id) => self.handle_select_folder_mode(key, milestone_id)?,
+                }
             }
+            Event::Mouse(mouse_event) => {
+                self.handle_mouse_event(mouse_event)?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Result<(), Box<dyn Error>> {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                let x = mouse_event.column;
+                let y = mouse_event.row;
+
+                // Check if click is in milestone list area
+                if self.milestone_list_area.x <= x && x < self.milestone_list_area.x + self.milestone_list_area.width
+                    && self.milestone_list_area.y <= y && y < self.milestone_list_area.y + self.milestone_list_area.height {
+                    
+                    // Calculate which milestone was clicked
+                    let relative_y = y - self.milestone_list_area.y;
+                    let milestone_index = relative_y.saturating_sub(1) as usize; // Subtract 1 for border
+                    
+                    if milestone_index < self.roadmap.milestones.len() {
+                        self.milestone_list_state.select(Some(milestone_index));
+                    }
+                }
+
+                // Check if click is in folder list area
+                else if self.folder_list_area.x <= x && x < self.folder_list_area.x + self.folder_list_area.width
+                    && self.folder_list_area.y <= y && y < self.folder_list_area.y + self.folder_list_area.height {
+                    
+                    let relative_y = y - self.folder_list_area.y;
+                    let folder_index = relative_y.saturating_sub(1) as usize;
+                    
+                    if folder_index < self.roadmap.folders.len() {
+                        self.folder_list_state.select(Some(folder_index));
+                    }
+                }
+
+                // Check if click is on help button
+                else if self.help_button_area.x <= x && x < self.help_button_area.x + self.help_button_area.width
+                    && self.help_button_area.y <= y && y < self.help_button_area.y + self.help_button_area.height {
+                    
+                    self.show_help = !self.show_help;
+                    self.mode = if self.show_help { AppMode::Help } else { AppMode::Normal };
+                }
+
+                // Check if click is on add button
+                else if self.add_button_area.x <= x && x < self.add_button_area.x + self.add_button_area.width
+                    && self.add_button_area.y <= y && y < self.add_button_area.y + self.add_button_area.height {
+                    
+                    self.mode = AppMode::AddMilestone;
+                    self.input_buffer.clear();
+                }
+
+                // Check if click is on folder button
+                else if self.folder_button_area.x <= x && x < self.folder_button_area.x + self.folder_button_area.width
+                    && self.folder_button_area.y <= y && y < self.folder_button_area.y + self.folder_button_area.height {
+                    
+                    self.mode = AppMode::AddFolder;
+                    self.input_buffer.clear();
+                }
+            }
+            MouseEventKind::Moved => {
+                let x = mouse_event.column;
+                let y = mouse_event.row;
+
+                // Update hover state for milestone list
+                if self.milestone_list_area.x <= x && x < self.milestone_list_area.x + self.milestone_list_area.width
+                    && self.milestone_list_area.y <= y && y < self.milestone_list_area.y + self.milestone_list_area.height {
+                    
+                    let relative_y = y - self.milestone_list_area.y;
+                    let milestone_index = relative_y.saturating_sub(1) as usize;
+                    
+                    if milestone_index < self.roadmap.milestones.len() {
+                        self.mouse_hover_item = Some(milestone_index);
+                    } else {
+                        self.mouse_hover_item = None;
+                    }
+                } else {
+                    self.mouse_hover_item = None;
+                }
+            }
+            _ => {}
         }
         Ok(())
     }
@@ -421,6 +522,9 @@ impl App {
     }
 
     fn draw_milestone_list(&mut self, f: &mut Frame, area: Rect) {
+        // Update mouse area for milestone list
+        self.milestone_list_area = area;
+        
         let items: Vec<ListItem> = self
             .roadmap
             .milestones
@@ -503,7 +607,7 @@ impl App {
         }
     }
 
-    fn draw_status_bar(&self, f: &mut Frame, area: Rect) {
+    fn draw_status_bar(&mut self, f: &mut Frame, area: Rect) {
         let mode_text = match self.mode {
             AppMode::Normal => "NORMAL",
             AppMode::Help => "HELP",
@@ -521,7 +625,16 @@ impl App {
             self.messages.last().unwrap().clone()
         };
 
-        let status_text = format!("[{}] {} | Press 'h' for help", mode_text, messages_text);
+        // Create button areas for mouse interaction
+        let help_button_width = 8; // "[Help]" length
+        let add_button_width = 7; // "[Add]" length  
+        let folder_button_width = 10; // "[Folder]" length
+        
+        self.help_button_area = Rect::new(area.x + area.width - help_button_width - 2, area.y, help_button_width, 1);
+        self.add_button_area = Rect::new(area.x + area.width - help_button_width - add_button_width - 4, area.y, add_button_width, 1);
+        self.folder_button_area = Rect::new(area.x + area.width - help_button_width - add_button_width - folder_button_width - 6, area.y, folder_button_width, 1);
+
+        let status_text = format!("[{}] {} | [Folder] [Add] [Help]", mode_text, messages_text);
         
         let status = Paragraph::new(status_text)
             .style(Style::default().fg(Color::Yellow))
