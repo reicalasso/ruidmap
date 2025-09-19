@@ -1,0 +1,57 @@
+{
+  "name": "ruidmap-desktop",
+  "private": false,
+  "version": "1.0.0",
+  "description": "Modern, ASCII-art inspired task management and roadmap desktop application built with Tauri, React, and Rust",
+  "type": "module",
+  "keywords": [
+    "task-management",
+    "roadmap",
+    "desktop-app",
+    "tauri",
+    "react",
+    "rust",
+    "ascii-art",
+    "kanban",
+    "productivity",
+    "cross-platform"
+  ],
+  "author": {
+    "name": "reicalasso",
+    "url": "https://github.com/reicalasso"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reicalasso/ruidmap.git"
+  },
+  "homepage": "https://github.com/reicalasso/ruidmap#readme",
+  "bugs": {
+    "url": "https://github.com/reicalasso/ruidmap/issues"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-opener": "^2",
+    "framer-motion": "^12.23.16",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  }
+}
