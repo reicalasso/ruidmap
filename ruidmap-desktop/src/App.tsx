@@ -9,7 +9,7 @@ import TaskDetail from "./components/TaskDetail";
 import StatusBar from "./components/StatusBar";
 
 // Hooks
-import { useTasks, useTheme, useKeyboardShortcuts } from "./hooks/useTasks-mock";
+import { useTasks, useTheme, useKeyboardShortcuts } from "./hooks/useTasks";
 
 // Types
 import { Task } from "./types";
