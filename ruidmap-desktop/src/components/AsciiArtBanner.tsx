@@ -19,7 +19,7 @@ export const AsciiArtBanner: React.FC<AsciiArtBannerProps> = ({ className = "" }
     ──────────── Task Management & Roadmap ─────────────
   `;
 
-  const sparkleFrames = ['✨', '💫', '⭐', '🌟', '💥'];
+    const sparkleFrames = ['✨', '💫', '⭐', '🌟', '💥'];
 
   useEffect(() => {
     const interval = setInterval(() => {
