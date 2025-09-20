@@ -11,7 +11,8 @@ use commands::{
     set_task_due_date, add_task_subtask, toggle_task_subtask, add_task_comment,
     add_task_time, set_task_estimated_time, get_tasks_by_tag, get_tasks_by_due_date,
     get_overdue_tasks, get_all_tags, create_project, get_projects, get_current_project,
-    switch_project, update_project, delete_project, get_tasks_by_project, get_project_stats
+    switch_project, update_project, delete_project, get_tasks_by_project, get_project_stats,
+    export_data_dialog, export_data_to_file, import_data_from_content, validate_import_data
 };
 use storage::Storage;
 use std::sync::Mutex;
@@ -62,7 +63,11 @@ pub fn run() {
             update_project,
             delete_project,
             get_tasks_by_project,
-            get_project_stats
+            get_project_stats,
+            export_data_dialog,
+            export_data_to_file,
+            import_data_from_content,
+            validate_import_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running RuidMap application");

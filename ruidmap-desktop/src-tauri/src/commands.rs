@@ -574,3 +574,219 @@ pub struct ProjectStats {
     pub done_tasks: usize,
     pub progress_percentage: f64,
 }
+
+// Enhanced Data Export/Import Commands
+
+#[tauri::command]
+pub async fn export_data_dialog(
+    state: State<'_, AppState>
+) -> Result<String, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    // Create export data with metadata
+    let export_data = ExportData {
+        version: "0.2.1".to_string(),
+        export_date: chrono::Utc::now().to_rfc3339(),
+        data,
+    };
+    
+    let json_content = serde_json::to_string_pretty(&export_data)
+        .map_err(|e| format!("Failed to serialize data: {}", e))?;
+    
+    // Return the JSON content - frontend will handle file saving with dialog
+    Ok(json_content)
+}
+
+#[tauri::command]
+pub async fn export_data_to_file(
+    file_path: String,
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    // Create export data with metadata
+    let export_data = ExportData {
+        version: "0.2.1".to_string(),
+        export_date: chrono::Utc::now().to_rfc3339(),
+        data,
+    };
+    
+    let json_content = serde_json::to_string_pretty(&export_data)
+        .map_err(|e| format!("Failed to serialize data: {}", e))?;
+    
+    std::fs::write(file_path, json_content)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn import_data_from_content(
+    json_content: String,
+    merge_mode: bool,
+    state: State<'_, AppState>
+) -> Result<ImportResult, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    // Try to parse as export data first
+    let import_result = if let Ok(export_data) = serde_json::from_str::<ExportData>(&json_content) {
+        if merge_mode {
+            // Merge with existing data
+            let mut current_data = storage.load_data().map_err(|e| format!("Failed to load current data: {}", e))?;
+            
+            // Generate new IDs for imported items to avoid conflicts
+            let mut max_task_id = current_data.tasks.iter().map(|t| t.id).max().unwrap_or(0);
+            let mut max_project_id = current_data.projects.iter().map(|p| p.id).max().unwrap_or(0);
+            
+            let mut imported_tasks = 0;
+            let mut imported_projects = 0;
+            
+            // Import projects
+            for mut project in export_data.data.projects {
+                max_project_id += 1;
+                let old_id = project.id;
+                project.id = max_project_id;
+                
+                // Update task references to new project ID
+                for task in &mut export_data.data.tasks.clone() {
+                    if task.project_id == old_id {
+                        // This task belongs to the imported project
+                        max_task_id += 1;
+                        let mut new_task = task.clone();
+                        new_task.id = max_task_id;
+                        new_task.project_id = max_project_id;
+                        current_data.tasks.push(new_task);
+                        imported_tasks += 1;
+                    }
+                }
+                
+                current_data.projects.push(project);
+                imported_projects += 1;
+            }
+            
+            storage.save_data(&current_data).map_err(|e| format!("Failed to save merged data: {}", e))?;
+            
+            ImportResult {
+                success: true,
+                imported_tasks,
+                imported_projects,
+                message: format!("Successfully merged {} tasks and {} projects", imported_tasks, imported_projects),
+                export_version: export_data.version,
+                export_date: Some(export_data.export_date),
+            }
+        } else {
+            // Replace all data
+            storage.save_data(&export_data.data).map_err(|e| format!("Failed to save imported data: {}", e))?;
+            
+            ImportResult {
+                success: true,
+                imported_tasks: export_data.data.tasks.len(),
+                imported_projects: export_data.data.projects.len(),
+                message: format!("Successfully imported {} tasks and {} projects", 
+                    export_data.data.tasks.len(), export_data.data.projects.len()),
+                export_version: export_data.version,
+                export_date: Some(export_data.export_date),
+            }
+        }
+    } else if let Ok(legacy_data) = serde_json::from_str::<crate::models::RoadmapData>(&json_content) {
+        // Direct RoadmapData import
+        if merge_mode {
+            return Err("Merge mode not supported for legacy data format".to_string());
+        }
+        
+        storage.save_data(&legacy_data).map_err(|e| format!("Failed to save legacy data: {}", e))?;
+        
+        ImportResult {
+            success: true,
+            imported_tasks: legacy_data.tasks.len(),
+            imported_projects: legacy_data.projects.len(),
+            message: format!("Successfully imported legacy data: {} tasks and {} projects", 
+                legacy_data.tasks.len(), legacy_data.projects.len()),
+            export_version: "legacy".to_string(),
+            export_date: None,
+        }
+    } else {
+        return Err("Invalid data format. File does not contain valid RuidMap data.".to_string());
+    };
+    
+    Ok(import_result)
+}
+
+#[tauri::command]
+pub async fn validate_import_data(
+    json_content: String
+) -> Result<ImportValidation, String> {
+    // Try to parse as export data
+    if let Ok(export_data) = serde_json::from_str::<ExportData>(&json_content) {
+        Ok(ImportValidation {
+            valid: true,
+            version: export_data.version,
+            export_date: Some(export_data.export_date),
+            task_count: export_data.data.tasks.len(),
+            project_count: export_data.data.projects.len(),
+            format_type: "export".to_string(),
+            warnings: vec![],
+            errors: vec![],
+        })
+    } else if let Ok(legacy_data) = serde_json::from_str::<crate::models::RoadmapData>(&json_content) {
+        let mut warnings = vec![];
+        if legacy_data.version != "0.2.1" {
+            warnings.push("Legacy data format detected. Some features may not be available.".to_string());
+        }
+        
+        Ok(ImportValidation {
+            valid: true,
+            version: legacy_data.version,
+            export_date: None,
+            task_count: legacy_data.tasks.len(),
+            project_count: legacy_data.projects.len(),
+            format_type: "legacy".to_string(),
+            warnings,
+            errors: vec![],
+        })
+    } else {
+        Ok(ImportValidation {
+            valid: false,
+            version: "unknown".to_string(),
+            export_date: None,
+            task_count: 0,
+            project_count: 0,
+            format_type: "invalid".to_string(),
+            warnings: vec![],
+            errors: vec!["Invalid JSON format or unrecognized data structure".to_string()],
+        })
+    }
+}
+
+// Data structures for export/import
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct ExportData {
+    pub version: String,
+    pub export_date: String,
+    pub data: crate::models::RoadmapData,
+}
+
+#[derive(serde::Serialize)]
+pub struct ImportResult {
+    pub success: bool,
+    pub imported_tasks: usize,
+    pub imported_projects: usize,
+    pub message: String,
+    pub export_version: String,
+    pub export_date: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct ImportValidation {
+    pub valid: bool,
+    pub version: String,
+    pub export_date: Option<String>,
+    pub task_count: usize,
+    pub project_count: usize,
+    pub format_type: String,
+    pub warnings: Vec<String>,
+    pub errors: Vec<String>,
+}

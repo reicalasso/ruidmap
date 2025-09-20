@@ -1,7 +1,7 @@
 {
   "name": "ruidmap-desktop",
   "private": false,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Modern, ASCII-art inspired task management and roadmap desktop application built with Tauri, React, and Rust",
   "type": "module",
   "keywords": [
@@ -37,6 +37,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/plugin-dialog": "^2.4.0",
+    "@tauri-apps/plugin-fs": "^2.4.2",
     "@tauri-apps/plugin-opener": "^2",
     "framer-motion": "^12.23.16",
     "react": "^19.1.0",
