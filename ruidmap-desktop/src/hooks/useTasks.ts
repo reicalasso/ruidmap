@@ -416,10 +416,27 @@ export const useKeyboardShortcuts = (callbacks: {
   onAddTask: () => void;
   onDeleteTask?: () => void;
   onToggleStatus?: () => void;
+  onFocusSearch?: () => void;
 }) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only trigger if not typing in an input
+      // Handle Ctrl+F for search
+      if (event.ctrlKey && event.key === 'f') {
+        event.preventDefault();
+        if (callbacks.onFocusSearch) {
+          callbacks.onFocusSearch();
+        }
+        return;
+      }
+
+      // Handle Ctrl+N for new task
+      if (event.ctrlKey && event.key === 'n') {
+        event.preventDefault();
+        callbacks.onAddTask();
+        return;
+      }
+
+      // Only trigger other shortcuts if not typing in an input
       if (event.target instanceof HTMLInputElement || 
           event.target instanceof HTMLTextAreaElement ||
           event.target instanceof HTMLSelectElement) {

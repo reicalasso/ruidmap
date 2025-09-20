@@ -1,5 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo } from 'react';
 import { Task, TaskStatus } from '../types';
+import { SearchFilter } from './ui/SearchFilter';
+import { useTaskSearch } from '../hooks/useSearch';
 
 interface TaskListProps {
   tasks: Task[];
@@ -7,6 +10,8 @@ interface TaskListProps {
   onTaskDelete: (id: number) => void;
   onTaskStatusChange: (id: number, status: TaskStatus) => void;
   className?: string;
+  showSearch?: boolean;
+  availableTags?: string[];
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -14,8 +19,16 @@ export const TaskList: React.FC<TaskListProps> = ({
   onTaskClick,
   onTaskDelete,
   onTaskStatusChange,
-  className = ""
+  className = "",
+  showSearch = true,
+  availableTags = []
 }) => {
+  const { 
+    filteredItems: filteredTasks, 
+    updateFilters, 
+    hasActiveFilters, 
+    resultCount 
+  } = useTaskSearch(tasks);
   const getStatusIcon = (status: TaskStatus) => {
     switch (status) {
       case 'todo': return '📋';
@@ -52,9 +65,9 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   const groupedTasks = {
-    todo: tasks.filter(task => task.status === 'todo'),
-    'in-progress': tasks.filter(task => task.status === 'in-progress'),
-    done: tasks.filter(task => task.status === 'done')
+    todo: filteredTasks.filter(task => task.status === 'todo'),
+    'in-progress': filteredTasks.filter(task => task.status === 'in-progress'),
+    done: filteredTasks.filter(task => task.status === 'done')
   };
 
   const renderTaskColumn = (status: TaskStatus, tasks: Task[], title: string) => (
@@ -174,10 +187,31 @@ export const TaskList: React.FC<TaskListProps> = ({
   );
 
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-auto ${className}`}>
-      {renderTaskColumn('todo', groupedTasks.todo, 'To Do')}
-      {renderTaskColumn('in-progress', groupedTasks['in-progress'], 'In Progress')}
-      {renderTaskColumn('done', groupedTasks.done, 'Done')}
+    <div className={`task-list ${className}`}>
+      {/* Search and Filter Section */}
+      {showSearch && (
+        <div className="mb-6">
+          <SearchFilter
+            onFilterChange={updateFilters}
+            availableTags={availableTags}
+            placeholder="Search tasks by title, description, or tags..."
+          />
+          
+          {/* Results Summary */}
+          {hasActiveFilters && (
+            <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              Showing {resultCount} of {tasks.length} tasks
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Task Columns */}
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-auto`}>
+        {renderTaskColumn('todo', groupedTasks.todo, 'To Do')}
+        {renderTaskColumn('in-progress', groupedTasks['in-progress'], 'In Progress')}
+        {renderTaskColumn('done', groupedTasks.done, 'Done')}
+      </div>
     </div>
   );
 };

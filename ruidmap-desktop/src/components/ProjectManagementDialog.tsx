@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Project, ProjectCreateRequest, ProjectUpdateRequest, ProjectStats } from '../types';
 import { useProjectManagement } from '../hooks/useProjectManagement';
+import { useProjectSearch } from '../hooks/useSearch';
 
 interface ProjectManagementDialogProps {
   isOpen: boolean;
@@ -27,6 +28,9 @@ export const ProjectManagementDialog: React.FC<ProjectManagementDialogProps> = (
     getProjectStats,
     clearError,
   } = useProjectManagement();
+
+  // Add search functionality
+  const { filteredItems: filteredProjects, updateFilters, hasActiveFilters, resultCount } = useProjectSearch(projects);
 
   const [activeTab, setActiveTab] = useState<'projects' | 'create' | 'edit'>('projects');
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -236,7 +240,38 @@ export const ProjectManagementDialog: React.FC<ProjectManagementDialogProps> = (
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'projects' && (
             <div className="space-y-4">
-              {projects.map((project) => {
+              {/* Search Input */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search projects..."
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(e) => updateFilters({
+                    searchTerm: e.target.value,
+                    statusFilter: 'all',
+                    priorityFilter: 'all',
+                    tagFilter: 'all',
+                    dueDateFilter: 'all',
+                    sortBy: 'created',
+                    sortOrder: 'desc'
+                  })}
+                />
+              </div>
+
+              {/* Results Summary */}
+              {hasActiveFilters && (
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Showing {resultCount} of {projects.length} projects
+                </div>
+              )}
+
+              {/* Projects List */}
+              {filteredProjects.map((project) => {
                 const stats = projectStats.get(project.id);
                 return (
                   <motion.div

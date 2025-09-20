@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-09-20
+
+### Added
+- **Comprehensive Search & Filter System**: Universal search functionality
+  - Advanced SearchFilter component with real-time filtering
+  - Text search across tasks, projects, and content
+  - Multi-criteria filtering (status, priority, tags, dates)
+  - Smart sorting with customizable order
+  - Keyboard shortcuts (Ctrl+F for search focus)
+  - Search integration in TaskList, ProjectSelector, and dialogs
+  - Tag-based filtering with dynamic suggestions
+  - Date range filtering (overdue, today, this week, this month)
+
+### Enhanced
+- **User Experience**: Improved productivity with powerful search tools
+- **Performance**: Memoized search results and optimized filtering
+- **Accessibility**: Keyboard navigation and focus management for search
+
 ## [0.2.0] - 2025-09-20
 
 ### Added

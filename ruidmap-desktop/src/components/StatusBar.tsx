@@ -197,7 +197,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             {/* App Version Info */}
             <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 font-mono">
               <span>🚀</span>
-              <span>RuidMap v0.2.2</span>
+              <span>RuidMap v0.2.3</span>
             </div>
           </div>
         </div>

@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2025-09-20
+
+### Added
+- **Comprehensive Search & Filter System**: Universal search functionality across all components
+  - **SearchFilter Component**: Advanced filtering with text search, status, priority, tags, and date ranges
+    - Real-time search with instant results
+    - Collapsible advanced filters for clean UI
+    - Visual filter indicators and result summaries
+    - Support for multiple filter combinations
+  - **Search Hooks**: Specialized hooks for different content types
+    - `useTaskSearch` for task filtering and sorting
+    - `useProjectSearch` for project management
+    - `useGenericSearch` for extensible search functionality
+    - Smart sorting with priority handling and date logic
+  - **Enhanced Components**: Search integration across the application
+    - TaskList with built-in search and filtering
+    - ProjectSelector with quick project search
+    - ProjectManagementDialog with search capabilities
+    - Tag-based filtering with dynamic tag suggestions
+  - **Keyboard Shortcuts**: Quick access to search functionality
+    - `Ctrl+F` to focus search input globally
+    - `Ctrl+N` for new task creation
+    - Visual shortcuts guide in help overlay
+  - **Search Features**: Advanced search capabilities
+    - Date-based filtering (overdue, today, this week, this month)
+    - Multi-criteria sorting (created, updated, title, priority, due date)
+    - Tag filtering with autocomplete suggestions
+    - Status and priority quick filters
+    - Case-insensitive text search across title, description, and tags
+
+### Enhanced
+- **User Experience**: Improved productivity with powerful search tools
+  - Global search accessibility via keyboard shortcuts
+  - Responsive search interface for all screen sizes
+  - Theme-aware search components
+  - Accessibility features with proper focus management
+
+### Technical Improvements
+- **Search Architecture**: Performant and scalable search implementation
+  - Memoized search results for optimal performance
+  - Debounced search input to reduce re-renders
+  - Type-safe search interfaces and filter states
+  - Extensible search system for future content types
+
 ## [0.2.2] - 2025-09-20
 
 ### Added

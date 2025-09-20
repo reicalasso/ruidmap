@@ -34,6 +34,7 @@ function App() {
   const [isDataManagementOpen, setIsDataManagementOpen] = useState(false);
   const [isKeyboardShortcutsOpen, setIsKeyboardShortcutsOpen] = useState(false);
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const themeDropdownRef = useRef<HTMLDivElement>(null);
   
   // New UI/UX hooks
@@ -122,6 +123,23 @@ function App() {
     }
   }, [currentProject, refreshTasks]);
 
+  // Load available tags when tasks change
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const tags = await getAllTags();
+        setAvailableTags(tags);
+      } catch (error) {
+        console.error('Failed to load tags:', error);
+        setAvailableTags([]);
+      }
+    };
+
+    if (currentProject) {
+      loadTags();
+    }
+  }, [tasks, currentProject, getAllTags]);
+
   // Handlers
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
@@ -131,6 +149,15 @@ function App() {
   const handleAddTask = () => {
     setSelectedTask(null);
     setIsTaskDetailOpen(true);
+  };
+
+  const handleFocusSearch = () => {
+    // Focus the search input in the TaskList component
+    const searchInput = document.querySelector('input[placeholder*="Search tasks"]') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
   };
 
   const handleSaveTask = async (taskData: Partial<Task>) => {
@@ -224,12 +251,14 @@ function App() {
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onAddTask: handleAddTask,
+    onFocusSearch: handleFocusSearch,
     // We could add more shortcuts here for selected tasks
   });
 
   // Define keyboard shortcuts for overlay
   const shortcuts = [
     { id: 'add-task', keys: ['Ctrl', 'N'], description: 'Add new task', category: 'Tasks', action: handleAddTask },
+    { id: 'focus-search', keys: ['Ctrl', 'F'], description: 'Focus search', category: 'Search', action: handleFocusSearch },
     { id: 'save-task', keys: ['Ctrl', 'S'], description: 'Save current task', category: 'Tasks', action: () => {} },
     { id: 'close-dialog', keys: ['Escape'], description: 'Close dialog', category: 'General', action: () => setIsTaskDetailOpen(false) },
     { id: 'show-shortcuts', keys: ['Ctrl', '?'], description: 'Show shortcuts', category: 'General', action: () => setIsKeyboardShortcutsOpen(true) },
@@ -293,7 +322,7 @@ function App() {
                     RuidMap
                   </h1>
                   <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                    Task Management v0.2.2
+                    Task Management v0.2.3
                   </p>
                 </div>
               </div>
@@ -506,6 +535,8 @@ function App() {
               onTaskDelete={handleDeleteTask}
               onTaskStatusChange={handleStatusChange}
               className="h-full"
+              showSearch={true}
+              availableTags={availableTags}
             />
         </motion.div>
       </main>

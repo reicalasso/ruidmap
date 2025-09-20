@@ -8,6 +8,8 @@ export { NotificationProvider, useNotifications } from './NotificationSystem';
 export type { Notification, NotificationType } from './NotificationSystem';
 export { NotificationContainer } from './NotificationContainer';
 export { ProgressBar, CircularProgress } from './ProgressBar';
+export { SearchFilter } from './SearchFilter';
+export type { SearchFilterState } from './SearchFilter';
 
 // Interactive Components
 export { ContextMenu, useContextMenu } from './ContextMenu';
