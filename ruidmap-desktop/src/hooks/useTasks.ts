@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Task, TaskCreateRequest, TaskUpdateRequest, TaskStats, TaskStatus, Theme, ProjectStats } from '../types';
+import { Task, TaskCreateRequest, TaskUpdateRequest, TaskStats, TaskStatus, ProjectStats } from '../types';
 
 export const useTasks = (projectId?: number) => {
   const [tasks, setTasks] = useState<Task[]>([]);

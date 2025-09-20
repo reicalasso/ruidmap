@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useMemo } from 'react';
 import { Task, TaskStatus } from '../types';
 import { SearchFilter } from './ui/SearchFilter';
 import { useTaskSearch } from '../hooks/useSearch';
