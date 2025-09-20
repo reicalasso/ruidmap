@@ -1,6 +1,29 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority } from '../types';
+import { TagManager } from './TagManager';
+import { SubtaskManager } from './SubtaskManager';
+import { CommentSection } from './CommentSection';
+import { TimeTracker } from './TimeTracker';
+import { DueDatePicker } from './DueDatePicker';
+
+interface TaskDetailProps {
+  task: Task | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (task: Partial<Task>) => void;
+  onDelete: (id: number) => void;
+  // Advanced features callbacks
+  onAddTag: (taskId: number, tag: string) => void;
+  onRemoveTag: (taskId: number, tag: string) => void;
+  onSetDueDate: (taskId: number, dueDate?: string) => void;
+  onAddSubtask: (taskId: number, title: string) => void;
+  onToggleSubtask: (taskId: number, subtaskId: number) => void;
+  onAddComment: (taskId: number, text: string, author: string) => void;
+  onAddTime: (taskId: number, minutes: number) => void;
+  onSetEstimatedTime: (taskId: number, minutes?: number) => void;
+  getAllTags: () => Promise<string[]>;
+}
 
 interface TaskDetailProps {
   task: Task | null;
@@ -15,12 +38,23 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
   isOpen,
   onClose,
   onSave,
-  onDelete
+  onDelete,
+  onAddTag,
+  onRemoveTag,
+  onSetDueDate,
+  onAddSubtask,
+  onToggleSubtask,
+  onAddComment,
+  onAddTime,
+  onSetEstimatedTime,
+  getAllTags
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'basic' | 'advanced' | 'tracking'>('basic');
 
   useEffect(() => {
     if (task) {
@@ -34,7 +68,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
       setStatus('todo');
       setPriority('medium');
     }
-  }, [task]);
+    
+    // Load all available tags
+    const loadTags = async () => {
+      const tags = await getAllTags();
+      setAllTags(tags);
+    };
+    
+    if (isOpen) {
+      loadTags();
+    }
+  }, [task, isOpen, getAllTags]);
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -116,88 +160,158 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
 
             {/* Content */}
             <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-12rem)]">
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  📌 Task Title
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter task title..."
-                  autoFocus
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  📄 Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  placeholder="Enter task description..."
-                />
-              </div>
-
-              {/* Status and Priority */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    📊 Status
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="todo">{getStatusIcon('todo')} To Do</option>
-                    <option value="in-progress">{getStatusIcon('in-progress')} In Progress</option>
-                    <option value="done">{getStatusIcon('done')} Done</option>
-                  </select>
-                </div>
-
-                {/* Priority */}
-                <div>
-                  <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    🏃 Priority
-                  </label>
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="low">{getPriorityIcon('low')} Low</option>
-                    <option value="medium">{getPriorityIcon('medium')} Medium</option>
-                    <option value="high">{getPriorityIcon('high')} High</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* ASCII Art Separator */}
-              <div className="text-center text-gray-400 dark:text-gray-600 font-mono text-xs py-2">
-                ────────────────────────────────────────
-              </div>
-
-              {/* Metadata (for existing tasks) */}
+              {/* Tab Navigation */}
               {task && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono text-gray-600 dark:text-gray-400">
+                <div className="flex border-b border-gray-200 dark:border-gray-600">
+                  {(['basic', 'advanced', 'tracking'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-4 py-2 font-mono text-sm border-b-2 transition-colors ${
+                        activeTab === tab
+                          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                          : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      {tab === 'basic' && '📝 Basic'}
+                      {tab === 'advanced' && '⚡ Advanced'}
+                      {tab === 'tracking' && '⏱️ Tracking'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Basic Tab Content */}
+              {(activeTab === 'basic' || !task) && (
+                <div className="space-y-6">
+                  {/* Title */}
                   <div>
-                    <span className="font-medium">📅 Created:</span>
-                    <br />
-                    {new Date(task.created_at).toLocaleString()}
+                    <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      📌 Task Title
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter task title..."
+                      autoFocus
+                    />
                   </div>
+
+                  {/* Description */}
                   <div>
-                    <span className="font-medium">🔄 Updated:</span>
-                    <br />
-                    {new Date(task.updated_at).toLocaleString()}
+                    <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      📄 Description
+                    </label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      placeholder="Enter task description..."
+                    />
                   </div>
+
+                  {/* Status and Priority */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Status */}
+                    <div>
+                      <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        📊 Status
+                      </label>
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as TaskStatus)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="todo">{getStatusIcon('todo')} To Do</option>
+                        <option value="in-progress">{getStatusIcon('in-progress')} In Progress</option>
+                        <option value="done">{getStatusIcon('done')} Done</option>
+                      </select>
+                    </div>
+
+                    {/* Priority */}
+                    <div>
+                      <label className="block text-sm font-mono font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        🏃 Priority
+                      </label>
+                      <select
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="low">{getPriorityIcon('low')} Low</option>
+                        <option value="medium">{getPriorityIcon('medium')} Medium</option>
+                        <option value="high">{getPriorityIcon('high')} High</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Metadata (for existing tasks) */}
+                  {task && (
+                    <>
+                      <div className="text-center text-gray-400 dark:text-gray-600 font-mono text-xs py-2">
+                        ────────────────────────────────────────
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono text-gray-600 dark:text-gray-400">
+                        <div>
+                          <span className="font-medium">📅 Created:</span>
+                          <br />
+                          {new Date(task.created_at).toLocaleString()}
+                        </div>
+                        <div>
+                          <span className="font-medium">🔄 Updated:</span>
+                          <br />
+                          {new Date(task.updated_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Advanced Tab Content */}
+              {activeTab === 'advanced' && task && (
+                <div className="space-y-6">
+                  {/* Due Date Picker */}
+                  <DueDatePicker
+                    dueDate={task.due_date}
+                    onSetDueDate={(dueDate) => onSetDueDate(task.id, dueDate)}
+                  />
+
+                  {/* Tag Manager */}
+                  <TagManager
+                    tags={task.tags || []}
+                    onAddTag={(tag) => onAddTag(task.id, tag)}
+                    onRemoveTag={(tag) => onRemoveTag(task.id, tag)}
+                    allTags={allTags}
+                  />
+
+                  {/* Subtask Manager */}
+                  <SubtaskManager
+                    subtasks={task.subtasks || []}
+                    onAddSubtask={(title) => onAddSubtask(task.id, title)}
+                    onToggleSubtask={(subtaskId) => onToggleSubtask(task.id, subtaskId)}
+                  />
+
+                  {/* Comment Section */}
+                  <CommentSection
+                    comments={task.comments || []}
+                    onAddComment={(text, author) => onAddComment(task.id, text, author)}
+                  />
+                </div>
+              )}
+
+              {/* Tracking Tab Content */}
+              {activeTab === 'tracking' && task && (
+                <div className="space-y-6">
+                  <TimeTracker
+                    timeSpent={task.time_spent || 0}
+                    estimatedTime={task.estimated_time}
+                    onAddTime={(minutes) => onAddTime(task.id, minutes)}
+                    onSetEstimatedTime={(minutes) => onSetEstimatedTime(task.id, minutes)}
+                  />
                 </div>
               )}
             </div>

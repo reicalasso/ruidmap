@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-09-20
+## [0.2.0] - 2025-09-20
+
+### Added
+- **Project & Workspace Management**: Multi-project support with project switching
+- Project selector with visual indicators (colors and icons)
+- Project management dialog for creating, editing, and deleting projects
+- Project-specific task filtering and statistics
+- Enhanced Task model with project relationships
+- Automatic data migration from v0.1.0 format
+- Project settings with task templates and default configurations
+- Project color coding and icon customization
+- Workspace switching with preserved task context
+
+### Enhanced
+- Task creation now respects current project context
+- Statistics now show project-specific metrics
+- Improved data persistence with version handling
+- Better task organization through project hierarchy
+
+### Technical
+- Added Project data models and CRUD operations
+- Implemented project-aware task filtering in backend
+- Enhanced frontend with React project management components
+- Added migration logic for backward compatibility
+- Improved TypeScript interfaces for project management
+
+## [1.0.0] - 2025-09-19
 
 ### Added
 - Initial release of RuidMap Desktop

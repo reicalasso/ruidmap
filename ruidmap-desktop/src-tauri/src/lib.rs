@@ -7,7 +7,11 @@ mod commands;
 use commands::{
     AppState, get_tasks, add_task, update_task, delete_task, get_task_by_id,
     get_tasks_by_status, get_theme, set_theme, backup_data, restore_data,
-    toggle_task_status, get_task_stats
+    toggle_task_status, get_task_stats, add_task_tag, remove_task_tag,
+    set_task_due_date, add_task_subtask, toggle_task_subtask, add_task_comment,
+    add_task_time, set_task_estimated_time, get_tasks_by_tag, get_tasks_by_due_date,
+    get_overdue_tasks, get_all_tags, create_project, get_projects, get_current_project,
+    switch_project, update_project, delete_project, get_tasks_by_project, get_project_stats
 };
 use storage::Storage;
 use std::sync::Mutex;
@@ -38,7 +42,27 @@ pub fn run() {
             backup_data,
             restore_data,
             toggle_task_status,
-            get_task_stats
+            get_task_stats,
+            add_task_tag,
+            remove_task_tag,
+            set_task_due_date,
+            add_task_subtask,
+            toggle_task_subtask,
+            add_task_comment,
+            add_task_time,
+            set_task_estimated_time,
+            get_tasks_by_tag,
+            get_tasks_by_due_date,
+            get_overdue_tasks,
+            get_all_tags,
+            create_project,
+            get_projects,
+            get_current_project,
+            switch_project,
+            update_project,
+            delete_project,
+            get_tasks_by_project,
+            get_project_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running RuidMap application");

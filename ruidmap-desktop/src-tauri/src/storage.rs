@@ -1,8 +1,36 @@
-use crate::models::{RoadmapData, Task, TaskStatus, TaskPriority};
+use crate::models::{RoadmapData, Task, TaskStatus, TaskPriority, Project, ProjectSettings, TaskTemplate};
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+// Legacy data structures for migration
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LegacyTask {
+    pub id: u32,
+    pub title: String,
+    pub description: String,
+    pub status: TaskStatus,
+    pub priority: TaskPriority,
+    pub created_at: String,
+    pub updated_at: String,
+    pub due_date: Option<String>,
+    pub tags: Vec<String>,
+    pub subtasks: Vec<crate::models::Subtask>,
+    pub comments: Vec<crate::models::Comment>,
+    pub time_spent: u32,
+    pub estimated_time: Option<u32>,
+    pub attachments: Vec<crate::models::Attachment>,
+    // Missing project_id
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LegacyRoadmapData {
+    pub tasks: Vec<LegacyTask>,
+    pub theme: Option<String>,
+    pub version: Option<String>,
+}
 
 pub struct Storage {
     data_file_path: PathBuf,
@@ -31,10 +59,26 @@ impl Storage {
         }
 
         let contents = fs::read_to_string(&self.data_file_path)?;
-        let data: RoadmapData = serde_json::from_str(&contents)
-            .map_err(|e| anyhow!("Failed to parse JSON: {}", e))?;
         
-        Ok(data)
+        // Try to parse as current format first
+        match serde_json::from_str::<RoadmapData>(&contents) {
+            Ok(mut data) => {
+                // Migrate data if needed
+                self.migrate_data(&mut data)?;
+                Ok(data)
+            }
+            Err(_) => {
+                // Try to parse as legacy format (without projects)
+                match serde_json::from_str::<LegacyRoadmapData>(&contents) {
+                    Ok(legacy_data) => {
+                        let migrated_data = self.migrate_from_legacy(legacy_data)?;
+                        self.save_data(&migrated_data)?;
+                        Ok(migrated_data)
+                    }
+                    Err(e) => Err(anyhow!("Failed to parse JSON: {}", e))
+                }
+            }
+        }
     }
 
     pub fn save_data(&self, data: &RoadmapData) -> Result<()> {
@@ -53,13 +97,16 @@ impl Storage {
     pub fn add_task(&self, title: String, description: String, priority: Option<TaskPriority>) -> Result<Task> {
         let mut data = self.load_data()?;
         
+        // Get current project ID or use default
+        let project_id = data.current_project_id.unwrap_or(1);
+        
         // Generate new ID (simple incrementing)
         let new_id = data.tasks.iter()
             .map(|t| t.id)
             .max()
             .unwrap_or(0) + 1;
         
-        let mut task = Task::new(new_id, title, description);
+        let mut task = Task::new(new_id, project_id, title, description);
         if let Some(priority) = priority {
             task.update_priority(priority);
         }
@@ -154,5 +201,151 @@ impl Storage {
         let data: RoadmapData = serde_json::from_str(&contents)?;
         self.save_data(&data)?;
         Ok(())
+    }
+
+    // Project management methods
+    pub fn create_project(&self, name: String, description: String, color: Option<String>, icon: Option<String>) -> Result<crate::models::Project> {
+        let mut data = self.load_data()?;
+        
+        let new_id = data.projects.iter()
+            .map(|p| p.id)
+            .max()
+            .unwrap_or(0) + 1;
+        
+        let project = crate::models::Project::new_with_details(new_id, name, description, color, icon);
+        data.projects.push(project.clone());
+        
+        // Set as current project if it's the first one
+        if data.current_project_id.is_none() {
+            data.current_project_id = Some(new_id);
+        }
+        
+        self.save_data(&data)?;
+        Ok(project)
+    }
+
+    pub fn get_projects(&self) -> Result<Vec<crate::models::Project>> {
+        let data = self.load_data()?;
+        Ok(data.projects)
+    }
+
+    pub fn get_current_project(&self) -> Result<Option<crate::models::Project>> {
+        let data = self.load_data()?;
+        
+        if let Some(current_id) = data.current_project_id {
+            let project = data.projects.iter()
+                .find(|p| p.id == current_id)
+                .cloned();
+            Ok(project)
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn switch_project(&self, project_id: u32) -> Result<crate::models::Project> {
+        let mut data = self.load_data()?;
+        
+        let project = data.projects.iter()
+            .find(|p| p.id == project_id)
+            .ok_or_else(|| anyhow!("Project with id {} not found", project_id))?
+            .clone();
+        
+        data.current_project_id = Some(project_id);
+        self.save_data(&data)?;
+        
+        Ok(project)
+    }
+
+    pub fn delete_project(&self, project_id: u32) -> Result<()> {
+        let mut data = self.load_data()?;
+        
+        // Don't allow deleting if it's the only project
+        if data.projects.len() <= 1 {
+            return Err(anyhow!("Cannot delete the last project"));
+        }
+        
+        // Remove project
+        data.projects.retain(|p| p.id != project_id);
+        
+        // Remove all tasks from this project
+        data.tasks.retain(|t| t.project_id != project_id);
+        
+        // If current project was deleted, switch to first available
+        if data.current_project_id == Some(project_id) {
+            data.current_project_id = data.projects.first().map(|p| p.id);
+        }
+        
+        self.save_data(&data)?;
+        Ok(())
+    }
+
+    pub fn get_tasks_by_project(&self, project_id: u32) -> Result<Vec<Task>> {
+        let data = self.load_data()?;
+        
+        let filtered_tasks: Vec<Task> = data.tasks.into_iter()
+            .filter(|t| t.project_id == project_id)
+            .collect();
+        
+        Ok(filtered_tasks)
+    }
+
+    // Migration methods
+    fn migrate_data(&self, data: &mut RoadmapData) -> Result<()> {
+        // Check if data needs migration based on version
+        let current_version = "1.0.0";
+        
+        if data.version != current_version {
+            // Add project_id to tasks that don't have it
+            for task in &mut data.tasks {
+                if task.project_id == 0 {
+                    task.project_id = data.current_project_id.unwrap_or(1);
+                }
+            }
+
+            // Ensure at least one project exists
+            if data.projects.is_empty() {
+                let default_project = Project::new(1, "Default Project".to_string());
+                data.projects.push(default_project);
+                data.current_project_id = Some(1);
+            }
+
+            data.version = current_version.to_string();
+        }
+
+        Ok(())
+    }
+
+    fn migrate_from_legacy(&self, legacy_data: LegacyRoadmapData) -> Result<RoadmapData> {
+        // Create default project
+        let default_project = Project::new(1, "Default Project".to_string());
+        
+        // Convert legacy tasks to new format
+        let tasks: Vec<Task> = legacy_data.tasks.into_iter().map(|legacy_task| {
+            Task {
+                id: legacy_task.id,
+                project_id: 1, // Assign to default project
+                title: legacy_task.title,
+                description: legacy_task.description,
+                status: legacy_task.status,
+                priority: legacy_task.priority,
+                created_at: legacy_task.created_at,
+                updated_at: legacy_task.updated_at,
+                due_date: legacy_task.due_date,
+                tags: legacy_task.tags,
+                subtasks: legacy_task.subtasks,
+                comments: legacy_task.comments,
+                time_spent: legacy_task.time_spent,
+                estimated_time: legacy_task.estimated_time,
+                attachments: legacy_task.attachments,
+            }
+        }).collect();
+
+        Ok(RoadmapData {
+            tasks,
+            projects: vec![default_project],
+            current_project_id: Some(1),
+            theme: legacy_data.theme,
+            version: "1.0.0".to_string(),
+        })
     }
 }

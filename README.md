@@ -6,10 +6,13 @@ Modern, ASCII-art inspired task management and roadmap desktop application built
 
 - **Beautiful ASCII Art UI**: Retro-inspired interface with smooth animations
 - **Cross-Platform Desktop App**: Built with Tauri for Windows, macOS, and Linux
+- **Project & Workspace Management**: Multi-project support with project switching and filtering
+- **Project Organization**: Color-coded projects with custom icons and settings
 - **Kanban-Style Task Board**: Organize tasks in To Do, In Progress, and Done columns
+- **Project-Specific Statistics**: Track progress and metrics per project
 - **Multiple Themes**: Light, Dark, and Custom themes with real-time switching
 - **Keyboard Shortcuts**: Efficient task management with keyboard controls
-- **JSON Data Storage**: Simple, portable data storage
+- **JSON Data Storage**: Simple, portable data storage with automatic migration
 - **Framer Motion Animations**: Smooth transitions and delightful micro-interactions
 - **TypeScript**: Full type safety for robust development
 

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Task, TaskCreateRequest, TaskUpdateRequest, TaskStats, TaskStatus, Theme } from '../types';
+import { Task, TaskCreateRequest, TaskUpdateRequest, TaskStats, TaskStatus, Theme, ProjectStats } from '../types';
 
-export const useTasks = () => {
+export const useTasks = (projectId?: number) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<TaskStats>({
     total: 0,
@@ -14,12 +14,19 @@ export const useTasks = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load tasks from backend
+  // Load tasks from backend - filtered by project if provided
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const tasksData = await invoke<Task[]>('get_tasks');
+      
+      let tasksData: Task[];
+      if (projectId) {
+        tasksData = await invoke<Task[]>('get_tasks_by_project', { projectId });
+      } else {
+        tasksData = await invoke<Task[]>('get_tasks');
+      }
+      
       setTasks(tasksData);
     } catch (err) {
       console.error('Error loading tasks:', err);
@@ -27,17 +34,28 @@ export const useTasks = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
-  // Load task statistics
+  // Load task statistics - use project stats if projectId provided
   const loadStats = useCallback(async () => {
     try {
-      const statsData = await invoke<TaskStats>('get_task_stats');
-      setStats(statsData);
+      if (projectId) {
+        const statsData = await invoke<ProjectStats>('get_project_stats', { projectId });
+        setStats({
+          total: statsData.total_tasks,
+          todo: statsData.todo_tasks,
+          in_progress: statsData.in_progress_tasks,
+          done: statsData.done_tasks,
+          progress_percentage: statsData.progress_percentage
+        });
+      } else {
+        const statsData = await invoke<TaskStats>('get_task_stats');
+        setStats(statsData);
+      }
     } catch (err) {
       console.error('Error loading stats:', err);
     }
-  }, []);
+  }, [projectId]);
 
   // Add new task
   const addTask = useCallback(async (request: TaskCreateRequest) => {
@@ -117,6 +135,153 @@ export const useTasks = () => {
     await updateTask(request);
   }, [updateTask]);
 
+  // Advanced Task Features
+  const addTaskTag = useCallback(async (taskId: number, tag: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('add_task_tag', { taskId, tag });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error adding task tag:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const removeTaskTag = useCallback(async (taskId: number, tag: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('remove_task_tag', { taskId, tag });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error removing task tag:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const setTaskDueDate = useCallback(async (taskId: number, dueDate?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('set_task_due_date', { taskId, dueDate });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error setting task due date:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const addTaskSubtask = useCallback(async (taskId: number, subtaskTitle: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('add_task_subtask', { taskId, subtaskTitle });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error adding task subtask:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const toggleTaskSubtask = useCallback(async (taskId: number, subtaskId: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('toggle_task_subtask', { taskId, subtaskId });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error toggling task subtask:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const addTaskComment = useCallback(async (taskId: number, commentText: string, author: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('add_task_comment', { taskId, commentText, author });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error adding task comment:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const addTaskTime = useCallback(async (taskId: number, minutes: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('add_task_time', { taskId, minutes });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error adding task time:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const setTaskEstimatedTime = useCallback(async (taskId: number, estimatedMinutes?: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedTask = await invoke<Task>('set_task_estimated_time', { taskId, estimatedMinutes });
+      setTasks(prev => prev.map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      ));
+    } catch (err) {
+      console.error('Error setting task estimated time:', err);
+      setError(err as string);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const getAllTags = useCallback(async () => {
+    try {
+      const tags = await invoke<string[]>('get_all_tags');
+      return tags;
+    } catch (err) {
+      console.error('Error getting all tags:', err);
+      return [];
+    }
+  }, []);
+
   // Initialize data on mount
   useEffect(() => {
     loadTasks();
@@ -133,7 +298,17 @@ export const useTasks = () => {
     deleteTask,
     toggleTaskStatus,
     changeTaskStatus,
-    refresh: loadTasks
+    refresh: loadTasks,
+    // Advanced features
+    addTaskTag,
+    removeTaskTag,
+    setTaskDueDate,
+    addTaskSubtask,
+    toggleTaskSubtask,
+    addTaskComment,
+    addTaskTime,
+    setTaskEstimatedTime,
+    getAllTags
   };
 };
 

@@ -1,4 +1,4 @@
-use crate::models::{Task, TaskCreateRequest, TaskUpdateRequest, TaskStatus, TaskPriority};
+use crate::models::{Task, TaskCreateRequest, TaskUpdateRequest, TaskStatus, Project, ProjectCreateRequest, ProjectUpdateRequest};
 use crate::storage::Storage;
 use std::sync::Mutex;
 use tauri::State;
@@ -136,5 +136,441 @@ pub struct TaskStats {
     pub todo: usize,
     pub in_progress: usize,
     pub done: usize,
+    pub progress_percentage: f64,
+}
+
+// Advanced Task Feature Commands
+
+#[tauri::command]
+pub async fn add_task_tag(
+    task_id: u32,
+    tag: String,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    task.add_tag(tag);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn remove_task_tag(
+    task_id: u32,
+    tag: String,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    task.remove_tag(&tag);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn set_task_due_date(
+    task_id: u32,
+    due_date: Option<String>,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    task.set_due_date(due_date);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn add_task_subtask(
+    task_id: u32,
+    subtask_title: String,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    // Generate new subtask ID
+    let subtask_id = task.subtasks.iter().map(|s| s.id).max().unwrap_or(0) + 1;
+    task.add_subtask(subtask_id, subtask_title);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn toggle_task_subtask(
+    task_id: u32,
+    subtask_id: u32,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    task.toggle_subtask(subtask_id);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn add_task_comment(
+    task_id: u32,
+    comment_text: String,
+    author: String,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    // Generate new comment ID
+    let comment_id = task.comments.iter().map(|c| c.id).max().unwrap_or(0) + 1;
+    task.add_comment(comment_id, comment_text, author);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn add_task_time(
+    task_id: u32,
+    minutes: u32,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    task.add_time(minutes);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn set_task_estimated_time(
+    task_id: u32,
+    estimated_minutes: Option<u32>,
+    state: State<'_, AppState>
+) -> Result<Task, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let task = data.tasks.iter_mut()
+        .find(|t| t.id == task_id)
+        .ok_or_else(|| format!("Task with id {} not found", task_id))?;
+    
+    task.set_estimated_time(estimated_minutes);
+    let updated_task = task.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save: {}", e))?;
+    
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn get_tasks_by_tag(
+    tag: String,
+    state: State<'_, AppState>
+) -> Result<Vec<Task>, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let tasks = storage.get_tasks().map_err(|e| format!("Failed to get tasks: {}", e))?;
+    
+    let filtered_tasks: Vec<Task> = tasks.into_iter()
+        .filter(|t| t.tags.contains(&tag))
+        .collect();
+    
+    Ok(filtered_tasks)
+}
+
+#[tauri::command]
+pub async fn get_tasks_by_due_date(
+    due_date: String,
+    state: State<'_, AppState>
+) -> Result<Vec<Task>, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let tasks = storage.get_tasks().map_err(|e| format!("Failed to get tasks: {}", e))?;
+    
+    let filtered_tasks: Vec<Task> = tasks.into_iter()
+        .filter(|t| t.due_date == Some(due_date.clone()))
+        .collect();
+    
+    Ok(filtered_tasks)
+}
+
+#[tauri::command]
+pub async fn get_overdue_tasks(state: State<'_, AppState>) -> Result<Vec<Task>, String> {
+    use chrono::{DateTime, Utc};
+    
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let tasks = storage.get_tasks().map_err(|e| format!("Failed to get tasks: {}", e))?;
+    
+    let now = Utc::now();
+    let filtered_tasks: Vec<Task> = tasks.into_iter()
+        .filter(|t| {
+            if let Some(due_date_str) = &t.due_date {
+                if let Ok(due_date) = DateTime::parse_from_rfc3339(due_date_str) {
+                    return due_date.with_timezone(&Utc) < now && t.status != TaskStatus::Done;
+                }
+            }
+            false
+        })
+        .collect();
+    
+    Ok(filtered_tasks)
+}
+
+#[tauri::command]
+pub async fn get_all_tags(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let tasks = storage.get_tasks().map_err(|e| format!("Failed to get tasks: {}", e))?;
+    
+    let mut all_tags: Vec<String> = tasks.iter()
+        .flat_map(|t| t.tags.iter())
+        .cloned()
+        .collect();
+    
+    all_tags.sort();
+    all_tags.dedup();
+    
+    Ok(all_tags)
+}
+
+// Project Management Commands
+
+#[tauri::command]
+pub async fn create_project(
+    request: ProjectCreateRequest,
+    state: State<'_, AppState>
+) -> Result<Project, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    // Generate new project ID
+    let new_id = data.projects.iter()
+        .map(|p| p.id)
+        .max()
+        .unwrap_or(0) + 1;
+    
+    let project = Project::new_with_details(
+        new_id,
+        request.name,
+        request.description.unwrap_or_default(),
+        request.color,
+        request.icon,
+    );
+    
+    data.projects.push(project.clone());
+    
+    // Set as current project if it's the first one
+    if data.current_project_id.is_none() {
+        data.current_project_id = Some(new_id);
+    }
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save data: {}", e))?;
+    
+    Ok(project)
+}
+
+#[tauri::command]
+pub async fn get_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    Ok(data.projects)
+}
+
+#[tauri::command]
+pub async fn get_current_project(state: State<'_, AppState>) -> Result<Option<Project>, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    if let Some(current_id) = data.current_project_id {
+        let project = data.projects.iter()
+            .find(|p| p.id == current_id)
+            .cloned();
+        Ok(project)
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+pub async fn switch_project(
+    project_id: u32,
+    state: State<'_, AppState>
+) -> Result<Project, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    // Verify project exists
+    let project = data.projects.iter()
+        .find(|p| p.id == project_id)
+        .ok_or_else(|| format!("Project with id {} not found", project_id))?
+        .clone();
+    
+    data.current_project_id = Some(project_id);
+    storage.save_data(&data).map_err(|e| format!("Failed to save data: {}", e))?;
+    
+    Ok(project)
+}
+
+#[tauri::command]
+pub async fn update_project(
+    request: ProjectUpdateRequest,
+    state: State<'_, AppState>
+) -> Result<Project, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let project = data.projects.iter_mut()
+        .find(|p| p.id == request.id)
+        .ok_or_else(|| format!("Project with id {} not found", request.id))?;
+    
+    project.update_info(request.name, request.description, request.color, request.icon);
+    let updated_project = project.clone();
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save data: {}", e))?;
+    
+    Ok(updated_project)
+}
+
+#[tauri::command]
+pub async fn delete_project(
+    project_id: u32,
+    state: State<'_, AppState>
+) -> Result<(), String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    
+    let mut data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    // Don't allow deleting if it's the only project
+    if data.projects.len() <= 1 {
+        return Err("Cannot delete the last project".to_string());
+    }
+    
+    // Remove project
+    data.projects.retain(|p| p.id != project_id);
+    
+    // Remove all tasks from this project
+    data.tasks.retain(|t| t.project_id != project_id);
+    
+    // If current project was deleted, switch to first available
+    if data.current_project_id == Some(project_id) {
+        data.current_project_id = data.projects.first().map(|p| p.id);
+    }
+    
+    storage.save_data(&data).map_err(|e| format!("Failed to save data: {}", e))?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_tasks_by_project(
+    project_id: u32,
+    state: State<'_, AppState>
+) -> Result<Vec<Task>, String> {
+    let storage = state.0.lock().map_err(|e| format!("Failed to acquire lock: {}", e))?;
+    let data = storage.load_data().map_err(|e| format!("Failed to load data: {}", e))?;
+    
+    let filtered_tasks: Vec<Task> = data.tasks.into_iter()
+        .filter(|t| t.project_id == project_id)
+        .collect();
+    
+    Ok(filtered_tasks)
+}
+
+#[tauri::command]
+pub async fn get_project_stats(
+    project_id: u32,
+    state: State<'_, AppState>
+) -> Result<ProjectStats, String> {
+    let tasks = get_tasks_by_project(project_id, state).await?;
+    
+    let todo_count = tasks.iter().filter(|t| t.status == TaskStatus::Todo).count();
+    let in_progress_count = tasks.iter().filter(|t| t.status == TaskStatus::InProgress).count();
+    let done_count = tasks.iter().filter(|t| t.status == TaskStatus::Done).count();
+    let total_count = tasks.len();
+    
+    let progress_percentage = if total_count > 0 {
+        (done_count as f64 / total_count as f64) * 100.0
+    } else {
+        0.0
+    };
+    
+    Ok(ProjectStats {
+        project_id,
+        total_tasks: total_count,
+        todo_tasks: todo_count,
+        in_progress_tasks: in_progress_count,
+        done_tasks: done_count,
+        progress_percentage,
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct ProjectStats {
+    pub project_id: u32,
+    pub total_tasks: usize,
+    pub todo_tasks: usize,
+    pub in_progress_tasks: usize,
+    pub done_tasks: usize,
     pub progress_percentage: f64,
 }

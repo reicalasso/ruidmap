@@ -153,7 +153,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       {/* Footer ASCII Art */}
       <div className="hidden md:block mt-4 text-center">
         <div className="font-mono text-xs text-gray-400 dark:text-gray-600">
-          ────────────────── RuidMap v1.0.0 ──────────────────
+          ────────────────── RuidMap v0.2.0 ──────────────────
         </div>
       </div>
     </motion.footer>

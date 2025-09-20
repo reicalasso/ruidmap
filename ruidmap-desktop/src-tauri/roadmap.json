@@ -1,5 +1,62 @@
 {
-  "tasks": [],
+  "tasks": [
+    {
+      "id": 1,
+      "project_id": 1,
+      "title": "slm",
+      "description": "aaaa",
+      "status": "todo",
+      "priority": "medium",
+      "created_at": "2025-09-20T00:17:51.910048007+00:00",
+      "updated_at": "2025-09-20T00:36:50.442459352+00:00",
+      "due_date": null,
+      "tags": [],
+      "subtasks": [],
+      "comments": [],
+      "time_spent": 0,
+      "estimated_time": null,
+      "attachments": []
+    }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "name": "Default Project",
+      "description": null,
+      "color": null,
+      "icon": null,
+      "created_at": "2025-09-20T00:33:18.475910061+00:00",
+      "updated_at": "2025-09-20T00:33:18.475910061+00:00",
+      "is_active": true,
+      "task_count": 0,
+      "settings": {
+        "task_template": null,
+        "default_priority": "medium",
+        "auto_archive_done": false,
+        "show_completed_tasks": true,
+        "default_tags": []
+      }
+    },
+    {
+      "id": 2,
+      "name": "rei",
+      "description": "Project created on 9/20/2025",
+      "color": "#6366f1",
+      "icon": null,
+      "created_at": "2025-09-20T00:33:41.742305487+00:00",
+      "updated_at": "2025-09-20T00:33:41.742305487+00:00",
+      "is_active": true,
+      "task_count": 0,
+      "settings": {
+        "task_template": null,
+        "default_priority": "medium",
+        "auto_archive_done": false,
+        "show_completed_tasks": true,
+        "default_tags": []
+      }
+    }
+  ],
+  "current_project_id": 1,
   "theme": "dark",
-  "version": "0.1.0"
+  "version": "1.0.0"
 }
