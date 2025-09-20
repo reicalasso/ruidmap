@@ -313,7 +313,7 @@ export const useTasks = (projectId?: number) => {
 };
 
 export const useTheme = () => {
-  const [currentTheme, setCurrentTheme] = useState<Theme>('light');
+  const [currentTheme, setCurrentTheme] = useState<string>('light');
   const [loading, setLoading] = useState(false);
 
   // Load theme from backend
@@ -321,12 +321,12 @@ export const useTheme = () => {
     try {
       setLoading(true);
       const theme = await invoke<string>('get_theme');
-      setCurrentTheme(theme as Theme);
+      setCurrentTheme(theme);
     } catch (err) {
       console.error('Error loading theme:', err);
       // Fallback to localStorage
-      const saved = localStorage.getItem('ruidmap-theme') as Theme;
-      if (saved && ['light', 'dark', 'custom'].includes(saved)) {
+      const saved = localStorage.getItem('ruidmap-theme');
+      if (saved) {
         setCurrentTheme(saved);
       }
     } finally {
@@ -335,7 +335,7 @@ export const useTheme = () => {
   }, []);
 
   // Save theme to backend and localStorage
-  const saveTheme = useCallback(async (theme: Theme) => {
+  const saveTheme = useCallback(async (theme: string) => {
     try {
       setLoading(true);
       await invoke('set_theme', { theme });
@@ -344,23 +344,47 @@ export const useTheme = () => {
       
       // Apply theme to document
       const root = document.documentElement;
-      if (theme === 'dark') {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
+      
+      // Apply different theme styles
+      root.className = ''; // Clear existing classes
+      
+      switch (theme) {
+        case 'dark':
+          root.classList.add('dark');
+          break;
+        case 'cyberpunk':
+          root.classList.add('cyberpunk');
+          root.style.setProperty('--bg-primary', '#0f0f0f');
+          root.style.setProperty('--text-primary', '#00ffff');
+          root.style.setProperty('--border-primary', '#00ffff');
+          break;
+        case 'nature':
+          root.classList.add('nature');
+          root.style.setProperty('--bg-primary', '#f0f9f0');
+          root.style.setProperty('--text-primary', '#2d5a2d');
+          root.style.setProperty('--border-primary', '#4ade80');
+          break;
+        case 'sunset':
+          root.classList.add('sunset');
+          root.style.setProperty('--bg-primary', '#fff7ed');
+          root.style.setProperty('--text-primary', '#9a3412');
+          root.style.setProperty('--border-primary', '#f97316');
+          break;
+        case 'custom':
+          root.classList.add('custom');
+          root.style.setProperty('--bg-primary', '#faf5ff');
+          root.style.setProperty('--text-primary', '#6b21a8');
+          root.style.setProperty('--border-primary', '#a855f7');
+          break;
+        default: // light
+          root.classList.remove('dark');
+          break;
       }
     } catch (err) {
       console.error('Error saving theme:', err);
       // Still save locally even if backend fails
       localStorage.setItem('ruidmap-theme', theme);
       setCurrentTheme(theme);
-      
-      const root = document.documentElement;
-      if (theme === 'dark') {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
     } finally {
       setLoading(false);
     }

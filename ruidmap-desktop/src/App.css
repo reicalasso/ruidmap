@@ -9,6 +9,51 @@
   --border-radius: 0.5rem;
 }
 
+/* Theme Styles */
+.cyberpunk {
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+  color: #00ffff;
+  --tw-text-gray-900: #00ffff;
+  --tw-text-gray-600: #00aaaa;
+  --tw-bg-white: #1a1a2e;
+  --tw-bg-gray-100: #252540;
+  --tw-border-gray-200: #00ffff;
+}
+
+.cyberpunk * {
+  text-shadow: 0 0 10px currentColor;
+}
+
+.nature {
+  background: linear-gradient(135deg, #f0f9f0 0%, #e8f5e8 50%, #d4f1d4 100%);
+  color: #2d5a2d;
+  --tw-text-gray-900: #2d5a2d;
+  --tw-text-gray-600: #4a7c59;
+  --tw-bg-white: #f8fdf8;
+  --tw-bg-gray-100: #e8f5e8;
+  --tw-border-gray-200: #4ade80;
+}
+
+.sunset {
+  background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 50%, #fdba74 100%);
+  color: #9a3412;
+  --tw-text-gray-900: #9a3412;
+  --tw-text-gray-600: #c2410c;
+  --tw-bg-white: #fffbf5;
+  --tw-bg-gray-100: #fed7aa;
+  --tw-border-gray-200: #f97316;
+}
+
+.custom {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #e9d5ff 100%);
+  color: #6b21a8;
+  --tw-text-gray-900: #6b21a8;
+  --tw-text-gray-600: #7c3aed;
+  --tw-bg-white: #fefcff;
+  --tw-bg-gray-100: #f3e8ff;
+  --tw-border-gray-200: #a855f7;
+}
+
 /* Accessibility Styles */
 .sr-only {
   position: absolute;

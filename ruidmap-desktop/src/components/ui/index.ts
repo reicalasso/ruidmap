@@ -6,6 +6,7 @@ export { Tooltip } from './Tooltip';
 export { FloatingActionButton } from './FloatingActionButton';
 export { NotificationProvider, useNotifications } from './NotificationSystem';
 export type { Notification, NotificationType } from './NotificationSystem';
+export { NotificationContainer } from './NotificationContainer';
 export { ProgressBar, CircularProgress } from './ProgressBar';
 
 // Interactive Components
